@@ -9,6 +9,7 @@ import pandas as pd
 import re
 import shutil
 import os
+from collections import Counter
 
 class FileToDataFrame:
     def __init__(self, fileName):
@@ -36,19 +37,28 @@ class FileToDataFrame:
         return newString
             
     def __prepareFile(self):
-        shutil.copy(self.fileName, os.path.splitext(self.fileName)[0]+"_temp.txt")
-        
-        output = open(self.tempFileName, "w", encoding="utf8")
-        input = open(self.fileName, encoding="utf8" , errors='replace')
-        
-        for line in input:
-            output.write(self.replacenth(re.sub(r'-', r',', line, 1), r':' , r',' , 2))
-        
-        input.close()
-        output.close()
+        #shutil.copy(self.fileName, os.path.splitext(self.fileName)[0]+"_temp.txt")
+        datetime_pattern = '\d{1,2}/\d{1,2}/\d{1,2},\s\d{1,2}:\d{1,2}\s[AP]M'
+
+        with open(self.fileName, "r", encoding="utf8") as out_lines:
+            lines = out_lines.readlines()
+            
+        with open(self.tempFileName, "w", encoding="utf8" , errors='replace') as in_lines:
+            for line in lines:
+                has_datetime = bool(re.match(datetime_pattern, line))
+                if(has_datetime):
+                    in_lines.write('\n')
+                    
+                    in_lines.write(self.replacenth(re.sub(r'-', r',', re.sub(r',',r'',line,1), 1), r':' , r',' , 2).strip('\n'))
+                else:
+                    in_lines.write(line.strip('\n'))
+    
         
     def __prepareDataFrame(self):
-        self.Df =  pd.read_csv(self.tempFileName, sep=',', usecols=range(4),
-                 lineterminator='\n',names=["Date", "Time", "Name", "Msg"])
+        self.Df =  pd.read_csv(self.tempFileName, sep=',', usecols=range(3),
+                 lineterminator='\n',names=["Date", "Name", "Msg"]).dropna()
+        #Set Date time format
+        self.Df['Date'] = pd.to_datetime(self.Df['Date'])
+           
         
                 
